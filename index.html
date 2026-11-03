@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><meta name="theme-color" content="#080c1b"><title>Tokyo After Dark 3.4 — Circulation nocturne</title>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><meta name="theme-color" content="#080c1b"><title>Tokyo After Dark 3.6 — Circulation réalignée</title>
 <style>
 *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#080c1b;color:#fff;font-family:Arial,sans-serif}.scene{position:fixed;inset:0;overflow:hidden}.backdrop{position:absolute;inset:0;background:url('tokyo-cinematic.jpg') center/cover no-repeat;transform:scale(1.012)}.layer{position:absolute;inset:0;pointer-events:none}.mist{background:radial-gradient(ellipse 32% 20% at 57% 47%,rgba(180,195,236,.26),transparent 75%),radial-gradient(ellipse 29% 16% at 80% 38%,rgba(192,178,222,.21),transparent 75%);filter:blur(21px);animation:mist 35s ease-in-out infinite alternate}.reflections{background:radial-gradient(ellipse 21% 43% at 52% 40%,rgba(244,55,181,.23),transparent 85%),radial-gradient(ellipse 20% 34% at 73% 44%,rgba(57,142,255,.21),transparent 85%);mix-blend-mode:screen;animation:reflections 11s ease-in-out infinite alternate}.warmth{background:radial-gradient(ellipse 28% 45% at 9% 70%,rgba(255,155,62,.17),transparent 85%),radial-gradient(ellipse 17% 28% at 81% 77%,rgba(255,167,87,.14),transparent 85%);mix-blend-mode:screen;animation:warmth 7s ease-in-out infinite alternate}.lightning{opacity:0;background:radial-gradient(ellipse 68% 57% at 64% 20%,rgba(209,221,255,.54),rgba(158,185,255,.13) 57%,transparent 85%);mix-blend-mode:screen;transition:opacity 420ms ease-out}.vignette{background:linear-gradient(to bottom,rgba(0,0,0,.12),transparent 24%,transparent 73%,rgba(0,0,0,.18))}canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}.clock{position:absolute;top:4.5%;right:4.5%;text-align:right;text-shadow:0 2px 18px rgba(0,0,0,.9);font-weight:300;letter-spacing:.045em;opacity:.83;transition:opacity .3s}.time{font-size:clamp(26px,3.3vw,65px)}.date{font-size:clamp(11px,1.1vw,19px);margin-top:4px;letter-spacing:.12em}.controls{position:absolute;left:3%;bottom:4%;display:flex;gap:9px;opacity:0;transition:opacity .4s}.controls.show,.controls:focus-within{opacity:1}.controls button{background:rgba(10,13,28,.72);border:1px solid rgba(255,255,255,.35);border-radius:7px;color:white;padding:10px 14px;font-size:14px;cursor:pointer}.hint{position:absolute;bottom:3%;left:50%;transform:translateX(-50%);font-size:13px;opacity:0;pointer-events:none;transition:opacity .6s}.hint.show{opacity:.75}@keyframes mist{from{transform:translateX(-4%);opacity:.35}to{transform:translateX(5%);opacity:.85}}@keyframes reflections{from{opacity:.28;transform:translateX(-1%)}to{opacity:.8;transform:translateX(1%)}}@keyframes warmth{from{opacity:.4}to{opacity:.85}}@media(prefers-reduced-motion:reduce){.mist,.reflections,.warmth{animation:none}}
 
@@ -24,7 +24,7 @@ for(i=0;i<125;i++){
   speed:rnd(3.3,7.0)*H/900,length:rnd(8,23)*H/900,alpha:rnd(.13,.34),wind:rnd(-1.8,-.45)*W/1600});
 }
 // Small vehicles on the distant avenue: depth-scaled lights only, no sprites crossing buildings.
-for(i=0;i<12;i++)cars.push({progress:rnd(0,1),lane:i%2,rate:rnd(.000028,.000056),phase:rnd(0,6.283),size:rnd(.8,1.25)});
+for(i=0;i<10;i++)cars.push({progress:rnd(0,1),lane:i%2,rate:rnd(.000024,.000046),phase:rnd(0,6.283),size:rnd(.75,1.1)});
 for(i=0;i<19;i++)steam.push({phase:rnd(0,6.28),life:rnd(0,1),size:rnd(9,19),offset:rnd(-13,13)});
 }
 function draw(t){requestAnimationFrame(draw);if(paused){last=t;return}var dt=Math.min(2,(t-last)/16.67||1);last=t;frame++;ctx.clearRect(0,0,W,H);if(lightningEnabled){if(!lightningNext)lightningNext=t+rnd(28000,52000);if(t>=lightningNext){lightningUntil=t+650;lightningNext=t+rnd(32000,67000)}var pulse=0;if(t<lightningUntil){var progress=(lightningUntil-t)/650;pulse=.24*Math.pow(progress,1.6)}document.getElementById("lightning").style.opacity=String(pulse)}ctx.save();ctx.beginPath();ctx.rect(0,0,W,H*.76);ctx.clip();
@@ -44,36 +44,62 @@ for(var pi=0;pi<3;pi++){
  ctx.restore();
 }
 ctx.restore();
-// Distant traffic, strictly within the visible wet avenue below Tokyo Tower.
-// Cars are tiny paired headlights/taillights; their speed and separation follow perspective.
+// Traffic is aligned to the actual roadway in tokyo-cinematic.jpg (1648x928).
+// Coordinates are IMAGE pixels, not viewport percentages: this prevents cars
+// drifting away from the road when the television uses background-size:cover.
+// Centerline is traced down the illuminated avenue, below Tokyo Tower.
 ctx.save();
-// Road center line bends slightly toward the foreground. Mask to the avenue only.
-ctx.beginPath();ctx.moveTo(W*.632,H*.451);ctx.lineTo(W*.656,H*.451);ctx.lineTo(W*.708,H*.685);ctx.lineTo(W*.624,H*.685);ctx.closePath();ctx.clip();
+var imgW=1648,imgH=928;
+var fit=Math.max(W/imgW,H/imgH)*1.012;
+var offsetX=(W-imgW*fit)/2,offsetY=(H-imgH*fit)/2;
+var roadPoints=[
+ {x:1124,y:444,half:5},
+ {x:1126,y:473,half:7},
+ {x:1124,y:504,half:9},
+ {x:1115,y:535,half:12},
+ {x:1096,y:568,half:16},
+ {x:1068,y:603,half:19}
+];
+function roadAt(z){
+ var t=Math.max(0,Math.min(.9999,z))*(roadPoints.length-1),i=Math.floor(t),f=t-i;
+ // smooth interpolation between surveyed road landmarks
+ f=f*f*(3-2*f);
+ var a=roadPoints[i],b=roadPoints[i+1];
+ return {x:a.x+(b.x-a.x)*f,y:a.y+(b.y-a.y)*f,half:a.half+(b.half-a.half)*f};
+}
+// Clip tightly to the street footprint, so no light can appear on buildings.
+ctx.beginPath();
+for(var rp=0;rp<roadPoints.length;rp++){
+ var pt=roadPoints[rp];
+ if(rp===0)ctx.moveTo(offsetX+(pt.x-pt.half)*fit,offsetY+pt.y*fit);
+ else ctx.lineTo(offsetX+(pt.x-pt.half)*fit,offsetY+pt.y*fit);
+}
+for(rp=roadPoints.length-1;rp>=0;rp--){
+ pt=roadPoints[rp];ctx.lineTo(offsetX+(pt.x+pt.half)*fit,offsetY+pt.y*fit);
+}
+ctx.closePath();ctx.clip();
 for(var ci=0;ci<cars.length;ci++){
  var car=cars[ci];
- // Opposing lanes: one approaches the window, the other recedes toward the skyline.
  car.progress+=(car.lane===0?1:-1)*car.rate*dt*16.67;
- if(car.progress>1.05)car.progress=-.05;
- if(car.progress<-.05)car.progress=1.05;
- var z=Math.max(.02,Math.min(1,car.progress));
- var depth=Math.pow(z,1.55);
- var roadX=(.643+.014*depth)*W, roadY=(.46+.22*depth)*H;
- var lateral=(car.lane===0?-.011:.012)*W*(.18+.82*depth);
- var x=roadX+lateral+Math.sin(car.phase+z*2)*W*.0008;
- var y=roadY;
- var size=(.35+2.1*depth)*car.size*Math.min(W/1600,H/900);
- var sep=size*1.75;
- var lightColor=car.lane===0?'255,237,202':'255,65,71';
- var halo=ctx.createRadialGradient(x,y,0,x,y,size*6);
- halo.addColorStop(0,'rgba('+lightColor+',.30)');halo.addColorStop(.35,'rgba('+lightColor+',.12)');halo.addColorStop(1,'rgba('+lightColor+',0)');
- ctx.fillStyle=halo;ctx.beginPath();ctx.arc(x,y,size*6,0,Math.PI*2);ctx.fill();
- ctx.fillStyle='rgba(12,15,29,.65)';ctx.fillRect(x-sep*.85,y-size*.45,sep*1.7,size*1.5);
- ctx.fillStyle='rgba('+lightColor+',.94)';
- ctx.beginPath();ctx.arc(x-sep*.5,y,size*.58,0,Math.PI*2);ctx.arc(x+sep*.5,y,size*.58,0,Math.PI*2);ctx.fill();
- // Soft reflection extending down the rain-soaked asphalt.
- var reflection=ctx.createLinearGradient(x,y+size,x,y+size*(4+depth*6));
- reflection.addColorStop(0,'rgba('+lightColor+',.29)');reflection.addColorStop(1,'rgba('+lightColor+',0)');
- ctx.fillStyle=reflection;ctx.fillRect(x-size*1.7,y+size,size*3.4,size*(3+depth*5));
+ if(car.progress>1.04)car.progress=-.04;
+ if(car.progress<-.04)car.progress=1.04;
+ if(car.progress<0||car.progress>1)continue;
+ var z=car.progress,pt=roadAt(z);
+ var laneOffset=(car.lane===0?-.31:.31)*pt.half;
+ var x=offsetX+(pt.x+laneOffset)*fit,y=offsetY+pt.y*fit;
+ var size=(.5+1.35*z)*car.size*fit;
+ var sep=size*1.65;
+ var lightColor=car.lane===0?'255,238,204':'255,70,75';
+ var halo=ctx.createRadialGradient(x,y,0,x,y,size*4.3);
+ halo.addColorStop(0,'rgba('+lightColor+',.30)');halo.addColorStop(.4,'rgba('+lightColor+',.10)');halo.addColorStop(1,'rgba('+lightColor+',0)');
+ ctx.fillStyle=halo;ctx.beginPath();ctx.arc(x,y,size*4.3,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle='rgba(12,15,29,.58)';ctx.fillRect(x-sep*.82,y-size*.4,sep*1.64,size*1.2);
+ ctx.fillStyle='rgba('+lightColor+',.92)';
+ ctx.beginPath();ctx.arc(x-sep*.48,y,size*.48,0,Math.PI*2);
+ ctx.arc(x+sep*.48,y,size*.48,0,Math.PI*2);ctx.fill();
+ var reflection=ctx.createLinearGradient(x,y+size,x,y+size*(3+z*3));
+ reflection.addColorStop(0,'rgba('+lightColor+',.22)');reflection.addColorStop(1,'rgba('+lightColor+',0)');
+ ctx.fillStyle=reflection;ctx.fillRect(x-size*1.25,y+size,size*2.5,size*(2+z*2));
 }
 ctx.restore();
 // Fine distant rain, behind the foreground droplets.
